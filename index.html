@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Equivale</title>
+<meta name="theme-color" content="#15150F">
+<meta name="description" content="Calculadora de equivalência de proteína entre alimentos">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Equivale">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+  :root{
+    --bg: #15150F;
+    --panel: #1D1D14;
+    --panel-2: #23231A;
+    --line: #EDE8D8;
+    --line-dim: #38382C;
+    --text: #EDE8D8;
+    --text-dim: #A9A594;
+    --rust: #C1432A;
+    --olive: #7C8B4A;
+    --gold: #E3B23C;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:#0A0A07;
+    font-family:var(--body);
+    color:var(--text);
+    display:flex;
+    justify-content:center;
+  }
+
+  .phone{
+    width:100%;
+    max-width:420px;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* App bar */
+  .appbar{
+    padding:1.1rem 1.15rem 0.9rem;
+    display:flex;
+    align-items:center;
+    gap:0.7rem;
+    border-bottom:1px solid var(--line-dim);
+    flex-shrink:0;
+  }
+  .back-btn{
+    width:34px; height:34px;
+    border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line-dim);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text);
+    font-size:1.1rem;
+    cursor:pointer;
+    flex-shrink:0;
+    visibility:hidden;
+  }
+  .back-btn.show{visibility:visible;}
+  .appbar-title{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1.15rem;
+  }
+  .appbar-title .accent{color:var(--rust);}
+  .appbar-sub{
+    font-family:var(--mono);
+    font-size:0.68rem;
+    color:var(--text-dim);
+    margin-top:0.1rem;
+  }
+
+  /* Screens */
+  .screens{flex:1; position:relative; overflow:hidden;}
+  .screen{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    pointer-events:none;
+    transform:translateX(16px);
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .screen.active{
+    opacity:1;
+    pointer-events:auto;
+    transform:translateX(0);
+  }
+  .scroll{flex:1; overflow-y:auto; padding:1rem 1.15rem 1rem;}
+
+  /* Screen 1: search + list */
+  .search-box{
+    background:var(--panel);
+    border:1px solid var(--line-dim);
+    border-radius:10px;
+    padding:0.7rem 0.85rem;
+    margin-bottom:0.9rem;
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .search-box input{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-family:var(--body);
+    font-size:0.95rem;
+  }
+  .search-box input::placeholder{color:var(--text-dim);}
+  .search-box svg{flex-shrink:0; opacity:0.5;}
+
+  .group-chip-row{
+    display:flex; gap:0.4rem;
+    overflow-x:auto;
+    padding-bottom:0.2rem;
+    margin-bottom:1rem;
+    scrollbar-width:none;
+  }
+  .group-chip-row::-webkit-scrollbar{display:none;}
+  .chip{
+    flex-shrink:0;
+    font-family:var(--mono);
+    font-size:0.72rem;
+    padding:0.42rem 0.8rem;
+    border-radius:100px;
+    border:1px solid var(--line-dim);
+    color:var(--text-dim);
+    white-space:nowrap;
+  }
+  .chip.active{background:var(--gold); color:#15150F; border-color:var(--gold); font-weight:600;}
+
+  .food-list{display:flex; flex-direction:column; gap:0.5rem;}
+  .food-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid var(--line-dim);
+    border-radius:10px;
+    padding:0.9rem 1rem;
+    cursor:pointer;
+  }
+  .food-row:active{background:var(--panel-2);}
+  .food-row .fname{font-size:0.95rem; font-weight:500;}
+  .food-row .fgroup{font-family:var(--mono); font-size:0.66rem; color:var(--olive); text-transform:uppercase; margin-top:0.2rem;}
+  .food-row .fprot{font-family:var(--mono); font-size:0.85rem; color:var(--gold); font-weight:600; flex-shrink:0; margin-left:0.6rem;}
+
+  /* Screen 2: quantity */
+  .qty-hero{
+    text-align:center;
+    padding:2rem 1rem 1.5rem;
+  }
+  .qty-hero .selname{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1.4rem;
+    margin-bottom:0.3rem;
+  }
+  .qty-hero .selgroup{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    color:var(--olive);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
+
+  .big-stepper{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:1.4rem;
+    margin:1.5rem 0;
+  }
+  .big-stepper button{
+    width:56px; height:56px;
+    border-radius:50%;
+    background:var(--panel);
+    border:1px solid var(--line-dim);
+    color:var(--text);
+    font-size:1.6rem;
+    cursor:pointer;
+  }
+  .big-stepper button:active{background:var(--panel-2);}
+  .big-stepper .qty-display{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:2.6rem;
+    color:var(--gold);
+    min-width:130px;
+    text-align:center;
+  }
+  .big-stepper .qty-display .u{font-size:1.1rem; color:var(--text-dim); margin-left:0.3rem;}
+
+  .quick-amounts{
+    display:flex;
+    justify-content:center;
+    gap:0.5rem;
+    margin-bottom:1rem;
+    flex-wrap:wrap;
+    padding:0 1rem;
+  }
+  .quick-amounts button{
+    font-family:var(--mono);
+    font-size:0.78rem;
+    padding:0.4rem 0.75rem;
+    border-radius:8px;
+    background:var(--panel-2);
+    border:1px solid var(--line-dim);
+    color:var(--text-dim);
+    cursor:pointer;
+  }
+
+  .protein-preview{
+    margin:1rem 1.15rem 0;
+    background:linear-gradient(135deg, #241611, #1D1D14);
+    border:1px solid var(--rust);
+    border-radius:10px;
+    padding:0.9rem 1.1rem;
+    text-align:center;
+  }
+  .protein-preview .n{font-family:var(--mono); font-weight:700; font-size:1.5rem; color:var(--rust);}
+  .protein-preview .t{font-family:var(--mono); font-size:0.68rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-top:0.15rem;}
+
+  /* Screen 3: results */
+  .result-summary{
+    padding:0.9rem 1.15rem;
+    border-bottom:1px solid var(--line-dim);
+  }
+  .result-summary .line1{font-size:0.88rem; color:var(--text-dim);}
+  .result-summary .line1 b{color:var(--text); font-weight:600;}
+  .result-summary .line2{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    color:var(--rust);
+    margin-top:0.35rem;
+  }
+
+  .filter-toggle{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0.75rem 1.15rem;
+    border-bottom:1px solid var(--line-dim);
+  }
+  .filter-toggle span{font-family:var(--mono); font-size:0.72rem; color:var(--text-dim);}
+  .toggle{
+    width:38px; height:22px;
+    background:var(--panel-2);
+    border:1px solid var(--line-dim);
+    border-radius:100px;
+    cursor:pointer;
+    position:relative;
+    flex-shrink:0;
+  }
+  .toggle .dot{
+    width:16px; height:16px;
+    background:var(--text-dim);
+    border-radius:50%;
+    position:absolute;
+    top:2px; left:2px;
+    transition:all .15s ease;
+  }
+  .toggle.on{background:#3A3520; border-color:var(--gold);}
+  .toggle.on .dot{background:var(--gold); left:19px;}
+
+  .sub-list{display:flex; flex-direction:column; gap:0.6rem; padding:1rem 1.15rem;}
+  .sub-card{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-radius:8px;
+    padding:0.85rem 1rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:0.8rem;
+  }
+  .sub-card .left .sname{font-family:var(--display); font-weight:700; font-size:0.98rem;}
+  .sub-card .left .sfacts{font-family:var(--mono); font-size:0.68rem; color:var(--text-dim); margin-top:0.3rem;}
+  .sub-card .right{
+    text-align:right;
+    flex-shrink:0;
+  }
+  .sub-card .right .amt{font-family:var(--mono); font-weight:700; font-size:1.5rem; color:var(--gold); line-height:1;}
+  .sub-card .right .u{font-family:var(--mono); font-size:0.72rem; color:var(--text-dim);}
+
+  /* Bottom action bar */
+  .action-bar{
+    padding:0.9rem 1.15rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    border-top:1px solid var(--line-dim);
+    flex-shrink:0;
+  }
+  .btn-primary{
+    width:100%;
+    padding:0.9rem;
+    background:var(--rust);
+    color:#F7F1E5;
+    border:none;
+    border-radius:10px;
+    font-family:var(--display);
+    font-weight:700;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  .btn-primary:active{background:#A6371F;}
+  .btn-primary:disabled{background:var(--panel-2); color:var(--text-dim);}
+
+  .empty{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.85rem;
+    padding:2rem 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="appbar">
+    <div class="back-btn" id="backBtn">←</div>
+    <div>
+      <div class="appbar-title">Equi<span class="accent">vale</span></div>
+      <div class="appbar-sub" id="appbarSub">passo 1 de 3 · escolha o alimento</div>
+    </div>
+    <button id="installBtn" style="display:none; margin-left:auto; font-family:var(--mono); font-size:0.68rem; background:var(--gold); color:#15150F; border:none; border-radius:100px; padding:0.4rem 0.7rem; font-weight:700; cursor:pointer;">Instalar</button>
+  </div>
+
+  <div class="screens">
+
+    <!-- SCREEN 1: pick food -->
+    <div class="screen active" id="screen-search">
+      <div class="scroll">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="search" placeholder="Buscar alimento...">
+        </div>
+        <div class="group-chip-row" id="chips"></div>
+        <div class="food-list" id="foodList"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: quantity -->
+    <div class="screen" id="screen-qty">
+      <div class="scroll" style="padding-top:0;">
+        <div class="qty-hero">
+          <div class="selname" id="selName">—</div>
+          <div class="selgroup" id="selGroup">—</div>
+        </div>
+        <div class="big-stepper">
+          <button id="qMinus">−</button>
+          <div class="qty-display"><span id="qVal">150</span><span class="u">g</span></div>
+          <button id="qPlus">+</button>
+        </div>
+        <div class="quick-amounts">
+          <button data-v="50">50g</button>
+          <button data-v="100">100g</button>
+          <button data-v="150">150g</button>
+          <button data-v="200">200g</button>
+          <button data-v="300">300g</button>
+        </div>
+      </div>
+      <div class="protein-preview" style="margin-bottom:1rem;">
+        <div class="n" id="proteinPreview">—</div>
+        <div class="t">de proteína nessa quantidade</div>
+      </div>
+      <div class="action-bar">
+        <button class="btn-primary" id="toResults">Ver substitutos</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: results -->
+    <div class="screen" id="screen-results">
+      <div class="result-summary">
+        <div class="line1"><b id="rSumFood">—</b> <span id="rSumQty">—</span></div>
+        <div class="line2" id="rSumProtein">—</div>
+      </div>
+      <div class="filter-toggle">
+        <span>Apenas mesmo grupo alimentar</span>
+        <div class="toggle on" id="groupToggle"><div class="dot"></div></div>
+      </div>
+      <div class="scroll" style="padding-top:0;">
+        <div class="sub-list" id="subList"></div>
+      </div>
+      <div class="action-bar">
+        <button class="btn-primary" id="newSearch">Nova busca</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const FOODS = [
+  // Carnes e peixes
+  {id:1, name:"Peito de frango grelhado", group:"carnes", protein:31, kcal:159, fat:3.6},
+  {id:2, name:"Coxa de frango sem pele grelhada", group:"carnes", protein:26, kcal:177, fat:8.5},
+  {id:3, name:"Sobrecoxa de frango grelhada", group:"carnes", protein:25, kcal:197, fat:10},
+  {id:4, name:"Peito de peru", group:"carnes", protein:29, kcal:135, fat:1},
+  {id:5, name:"Patinho moído cozido", group:"carnes", protein:26, kcal:172, fat:7.3},
+  {id:6, name:"Alcatra grelhada", group:"carnes", protein:32, kcal:205, fat:9},
+  {id:7, name:"Filé mignon grelhado", group:"carnes", protein:30, kcal:227, fat:13},
+  {id:8, name:"Costela bovina assada", group:"carnes", protein:22, kcal:293, fat:22},
+  {id:9, name:"Carne seca dessalgada cozida", group:"carnes", protein:33, kcal:210, fat:8},
+  {id:10, name:"Fígado bovino grelhado", group:"carnes", protein:26, kcal:175, fat:4.5},
+  {id:11, name:"Lombo suíno grelhado", group:"carnes", protein:27, kcal:173, fat:6},
+  {id:12, name:"Pernil suíno assado", group:"carnes", protein:28, kcal:220, fat:12},
+  {id:13, name:"Costela suína assada", group:"carnes", protein:23, kcal:290, fat:21},
+  {id:14, name:"Filé de tilápia grelhado", group:"carnes", protein:26, kcal:129, fat:2.7},
+  {id:15, name:"Salmão grelhado", group:"carnes", protein:25, kcal:208, fat:13},
+  {id:16, name:"Atum em lata (água)", group:"carnes", protein:26, kcal:116, fat:1},
+  {id:17, name:"Bacalhau dessalgado cozido", group:"carnes", protein:23, kcal:105, fat:0.8},
+  {id:18, name:"Sardinha grelhada", group:"carnes", protein:24, kcal:175, fat:9},
+  {id:19, name:"Merluza grelhada", group:"carnes", protein:22, kcal:105, fat:1.5},
+  {id:20, name:"Camarão cozido", group:"carnes", protein:24, kcal:99, fat:1},
+  {id:21, name:"Polvo cozido", group:"carnes", protein:22, kcal:110, fat:1.4},
+  // Ovos e laticínios
+  {id:22, name:"Ovo cozido", group:"ovos", protein:13, kcal:155, fat:11},
+  {id:23, name:"Clara de ovo", group:"ovos", protein:11, kcal:52, fat:0.2},
+  {id:24, name:"Queijo cottage", group:"ovos", protein:11, kcal:98, fat:4.3},
+  {id:25, name:"Iogurte grego natural", group:"ovos", protein:10, kcal:97, fat:5},
+  {id:26, name:"Iogurte proteico (tipo skyr)", group:"ovos", protein:11, kcal:65, fat:0.2},
+  {id:27, name:"Queijo minas frescal", group:"ovos", protein:17, kcal:264, fat:20},
+  {id:28, name:"Queijo mussarela", group:"ovos", protein:22, kcal:280, fat:22},
+  {id:29, name:"Queijo parmesão", group:"ovos", protein:36, kcal:392, fat:26},
+  {id:30, name:"Ricota", group:"ovos", protein:11, kcal:140, fat:8},
+  {id:31, name:"Requeijão light", group:"ovos", protein:10, kcal:130, fat:8},
+  // Vegetais e leguminosas
+  {id:32, name:"Feijão preto cozido", group:"vegetais", protein:8.9, kcal:132, fat:0.5},
+  {id:33, name:"Feijão carioca cozido", group:"vegetais", protein:8.3, kcal:127, fat:0.9},
+  {id:34, name:"Feijão branco cozido", group:"vegetais", protein:8.7, kcal:127, fat:0.5},
+  {id:35, name:"Lentilha cozida", group:"vegetais", protein:9, kcal:116, fat:0.4},
+  {id:36, name:"Grão-de-bico cozido", group:"vegetais", protein:8.4, kcal:164, fat:2.6},
+  {id:37, name:"Soja cozida (grão)", group:"vegetais", protein:17, kcal:173, fat:9},
+  {id:38, name:"Ervilha cozida", group:"vegetais", protein:5, kcal:84, fat:0.4},
+  {id:39, name:"Tofu firme", group:"vegetais", protein:8, kcal:76, fat:4.8},
+  {id:40, name:"Edamame cozido", group:"vegetais", protein:11, kcal:122, fat:5},
+  {id:41, name:"Proteína texturizada de soja hidratada", group:"vegetais", protein:15, kcal:90, fat:0.5},
+  {id:42, name:"Amêndoas", group:"vegetais", protein:21, kcal:579, fat:50},
+  {id:43, name:"Amendoim torrado", group:"vegetais", protein:27, kcal:567, fat:49},
+  // Suplementos
+  {id:44, name:"Whey protein concentrado (pó)", group:"suplementos", protein:80, kcal:380, fat:6},
+  {id:45, name:"Whey protein isolado (pó)", group:"suplementos", protein:88, kcal:375, fat:1},
+  {id:46, name:"Caseína (pó)", group:"suplementos", protein:75, kcal:370, fat:5},
+  {id:47, name:"Proteína vegana blend (pó)", group:"suplementos", protein:70, kcal:380, fat:8},
+  {id:48, name:"Barra proteica (média)", group:"suplementos", protein:30, kcal:350, fat:10},
+];
+
+const GROUPS = {
+  todos: "Todos",
+  carnes: "Carnes e peixes",
+  ovos: "Ovos e laticínios",
+  vegetais: "Vegetais",
+  suplementos: "Suplementos"
+};
+
+let state = {
+  screen: 'search',
+  activeChip: 'todos',
+  searchTerm: '',
+  selectedId: null,
+  qty: 150,
+  sameGroupOnly: true
+};
+
+function getSelected(){ return FOODS.find(f => f.id === state.selectedId); }
+function targetProtein(){ const f = getSelected(); return f ? (f.protein/100) * state.qty : 0; }
+
+function goScreen(name){
+  state.screen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const back = document.getElementById('backBtn');
+  const sub = document.getElementById('appbarSub');
+  if(name === 'search'){ back.classList.remove('show'); sub.textContent = 'passo 1 de 3 · escolha o alimento'; }
+  if(name === 'qty'){ back.classList.add('show'); sub.textContent = 'passo 2 de 3 · quantidade'; }
+  if(name === 'results'){ back.classList.add('show'); sub.textContent = 'passo 3 de 3 · substitutos'; }
+}
+
+document.getElementById('backBtn').onclick = () => {
+  if(state.screen === 'qty') goScreen('search');
+  else if(state.screen === 'results') goScreen('qty');
+};
+
+function renderChips(){
+  const chips = document.getElementById('chips');
+  chips.innerHTML = '';
+  Object.entries(GROUPS).forEach(([key,label]) => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (state.activeChip === key ? ' active' : '');
+    c.textContent = label;
+    c.onclick = () => { state.activeChip = key; renderChips(); renderFoodList(); };
+    chips.appendChild(c);
+  });
+}
+
+function renderFoodList(){
+  const list = document.getElementById('foodList');
+  list.innerHTML = '';
+  const term = state.searchTerm.toLowerCase();
+  const items = FOODS.filter(f => {
+    const mChip = state.activeChip === 'todos' || f.group === state.activeChip;
+    const mSearch = f.name.toLowerCase().includes(term);
+    return mChip && mSearch;
+  });
+  if(items.length === 0){
+    list.innerHTML = '<div class="empty">Nenhum alimento encontrado</div>';
+    return;
+  }
+  items.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'food-row';
+    row.innerHTML = `
+      <div>
+        <div class="fname">${f.name}</div>
+        <div class="fgroup">${GROUPS[f.group]}</div>
+      </div>
+      <div class="fprot">${f.protein}g</div>
+    `;
+    row.onclick = () => {
+      state.selectedId = f.id;
+      document.getElementById('selName').textContent = f.name;
+      document.getElementById('selGroup').textContent = GROUPS[f.group];
+      updateQtyPreview();
+      goScreen('qty');
+    };
+    list.appendChild(row);
+  });
+}
+
+function updateQtyPreview(){
+  document.getElementById('qVal').textContent = state.qty;
+  document.getElementById('proteinPreview').textContent = targetProtein().toFixed(1) + 'g';
+}
+
+function setQty(v){
+  state.qty = Math.max(0, v);
+  updateQtyPreview();
+}
+
+document.getElementById('qMinus').onclick = () => setQty(state.qty - 10);
+document.getElementById('qPlus').onclick = () => setQty(state.qty + 10);
+document.querySelectorAll('.quick-amounts button').forEach(b => {
+  b.onclick = () => setQty(parseInt(b.dataset.v));
+});
+
+document.getElementById('toResults').onclick = () => {
+  renderResults();
+  goScreen('results');
+};
+
+document.getElementById('newSearch').onclick = () => goScreen('search');
+
+const groupToggle = document.getElementById('groupToggle');
+groupToggle.onclick = () => {
+  state.sameGroupOnly = !state.sameGroupOnly;
+  groupToggle.classList.toggle('on', state.sameGroupOnly);
+  renderResults();
+};
+
+function renderResults(){
+  const f = getSelected();
+  if(!f) return;
+  const target = targetProtein();
+
+  document.getElementById('rSumFood').textContent = f.name;
+  document.getElementById('rSumQty').textContent = `· ${state.qty}g`;
+  document.getElementById('rSumProtein').textContent = `= ${target.toFixed(1)}g de proteína a manter`;
+
+  let candidates = FOODS.filter(x => x.id !== f.id);
+  if(state.sameGroupOnly){
+    candidates = candidates.filter(x => x.group === f.group);
+  }
+  candidates = candidates.map(x => {
+    const grams = (target / x.protein) * 100;
+    const kcal = (x.kcal/100) * grams;
+    return {...x, grams, kcal};
+  }).sort((a,b) => a.kcal - b.kcal);
+
+  const list = document.getElementById('subList');
+  list.innerHTML = '';
+  if(candidates.length === 0){
+    list.innerHTML = '<div class="empty">Nenhum substituto nesse grupo.<br>Desative o filtro acima.</div>';
+    return;
+  }
+  candidates.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'sub-card';
+    card.innerHTML = `
+      <div class="left">
+        <div class="sname">${c.name}</div>
+        <div class="sfacts">${c.kcal.toFixed(0)} kcal</div>
+      </div>
+      <div class="right">
+        <div class="amt">${c.grams.toFixed(0)}</div>
+        <div class="u">gramas</div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  state.searchTerm = e.target.value;
+  renderFoodList();
+});
+
+renderChips();
+renderFoodList();
+
+// --- PWA: service worker + install prompt ---
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.style.display = 'block';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('installBtn');
+  if(btn){
+    btn.onclick = async () => {
+      if(!deferredInstall) return;
+      deferredInstall.prompt();
+      await deferredInstall.userChoice;
+      deferredInstall = null;
+      btn.style.display = 'none';
+    };
+  }
+});
+</script>
+</body>
+</html>
