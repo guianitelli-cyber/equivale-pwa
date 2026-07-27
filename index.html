@@ -263,6 +263,7 @@
   .result-summary .line1{font-size:0.88rem; color:var(--text-dim);}
   .result-summary .line1 b{color:var(--text); font-weight:600;}
   .result-summary .line2{font-family:var(--mono); font-size:0.72rem; color:var(--rust); margin-top:0.35rem;}
+  .result-summary .line3{font-family:var(--mono); font-size:0.7rem; color:var(--text-dim); margin-top:0.25rem;}
 
   .filter-toggle{
     display:flex; align-items:center; justify-content:space-between;
@@ -397,6 +398,7 @@
       <div class="result-summary">
         <div class="line1"><b id="rSumFood">—</b> <span id="rSumQty">—</span></div>
         <div class="line2" id="rSumProtein">—</div>
+        <div class="line3" id="rSumKcal">—</div>
       </div>
       <div class="filter-toggle" id="filterToggleRow">
         <span id="toggleLabel">Apenas mesmo subgrupo</span>
@@ -656,6 +658,16 @@ function renderChips(){
   });
 }
 
+function matchesSearch(food, term){
+  if(!term) return true;
+  if(food.name.toLowerCase().includes(term)) return true;
+  const subLabel = food.subgroup ? (SUBGROUPS[food.subgroup] || '') : '';
+  if(subLabel.toLowerCase().includes(term)) return true;
+  const catLabel = CATEGORIES[food.category] ? CATEGORIES[food.category].label : '';
+  if(catLabel.toLowerCase().includes(term)) return true;
+  return false;
+}
+
 function renderFoodList(){
   const list = document.getElementById('foodList');
   list.innerHTML = '';
@@ -663,7 +675,7 @@ function renderFoodList(){
   const info = catInfo();
   const items = foodsInCategory().filter(f => {
     const mChip = state.activeChip === 'todos' || f.subgroup === state.activeChip;
-    const mSearch = f.name.toLowerCase().includes(term);
+    const mSearch = matchesSearch(f, term);
     return mChip && mSearch;
   });
   if(items.length === 0){
@@ -785,6 +797,8 @@ function renderResults(){
   document.getElementById('rSumFood').textContent = f.name;
   document.getElementById('rSumQty').textContent = `· ${state.qty}g`;
   document.getElementById('rSumProtein').textContent = `= ${target.toFixed(1)}${unitLabel} de ${info.verb} a manter`;
+  const originalKcal = (f.kcal / 100) * state.qty;
+  document.getElementById('rSumKcal').textContent = `${originalKcal.toFixed(0)} kcal nessa porção`;
 
   const hasSubgroups = subgroupsInCategory().length > 1 && f.subgroup;
   const toggleRow = document.getElementById('filterToggleRow');
@@ -797,7 +811,7 @@ function renderResults(){
   }
   const rTerm = (state.resultsSearchTerm || '').toLowerCase();
   if(rTerm){
-    candidates = candidates.filter(x => x.name.toLowerCase().includes(rTerm));
+    candidates = candidates.filter(x => matchesSearch(x, rTerm));
   }
   candidates = candidates.map(x => {
     const grams = (target / nutrientOf(x)) * 100;
