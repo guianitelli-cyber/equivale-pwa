@@ -161,6 +161,23 @@
   .search-box input::placeholder{color:var(--text-dim);}
   .search-box svg{flex-shrink:0; opacity:0.5;}
 
+  .results-search{
+    background:var(--panel);
+    border:1px solid var(--line-dim);
+    border-radius:10px;
+    padding:0.65rem 0.85rem;
+    margin:0.8rem 1.15rem 0;
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .results-search input{
+    flex:1; background:transparent; border:none; outline:none;
+    color:var(--text); font-family:var(--body); font-size:0.92rem;
+  }
+  .results-search input::placeholder{color:var(--text-dim);}
+  .results-search svg{flex-shrink:0; opacity:0.5; color:var(--text-dim);}
+
   .group-chip-row{
     display:flex; gap:0.4rem;
     overflow-x:auto;
@@ -385,6 +402,10 @@
         <span id="toggleLabel">Apenas mesmo subgrupo</span>
         <div class="toggle" id="groupToggle"><div class="dot"></div></div>
       </div>
+      <div class="results-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="resultsSearch" placeholder="Buscar nos substitutos...">
+      </div>
       <div class="sort-row">
         <span class="sort-label">Ordenar</span>
         <button class="sort-btn active" id="sortByQty" data-sort="qty">Quantidade</button>
@@ -548,7 +569,8 @@ let state = {
   selectedId: null,
   qty: 100,
   sameGroupOnly: false,
-  sortBy: 'qty'
+  sortBy: 'qty',
+  resultsSearchTerm: ''
 };
 
 // ---------- HELPERS ----------
@@ -719,11 +741,18 @@ document.getElementById('qMinus').onclick = () => setQty(state.qty - 10);
 document.getElementById('qPlus').onclick = () => setQty(state.qty + 10);
 
 document.getElementById('toResults').onclick = () => {
+  state.resultsSearchTerm = '';
+  document.getElementById('resultsSearch').value = '';
   renderResults();
   goScreen('results');
 };
 
 document.getElementById('newSearch').onclick = () => goScreen('categoria');
+
+document.getElementById('resultsSearch').addEventListener('input', (e) => {
+  state.resultsSearchTerm = e.target.value;
+  renderResults();
+});
 
 // ---------- SCREEN 3: results ----------
 const groupToggle = document.getElementById('groupToggle');
@@ -766,6 +795,10 @@ function renderResults(){
   if(hasSubgroups && state.sameGroupOnly){
     candidates = candidates.filter(x => x.subgroup === f.subgroup);
   }
+  const rTerm = (state.resultsSearchTerm || '').toLowerCase();
+  if(rTerm){
+    candidates = candidates.filter(x => x.name.toLowerCase().includes(rTerm));
+  }
   candidates = candidates.map(x => {
     const grams = (target / nutrientOf(x)) * 100;
     const kcal = (x.kcal/100) * grams;
@@ -780,7 +813,7 @@ function renderResults(){
   const list = document.getElementById('subList');
   list.innerHTML = '';
   if(candidates.length === 0){
-    list.innerHTML = '<div class="empty">Nenhum substituto encontrado.<br>Desative o filtro acima.</div>';
+    list.innerHTML = '<div class="empty">Nenhum substituto encontrado.<br>Tenta outra busca ou desative o filtro acima.</div>';
     return;
   }
   candidates.forEach(c => {
